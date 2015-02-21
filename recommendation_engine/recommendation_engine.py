@@ -241,6 +241,8 @@ if __name__=="__main__":
     hidden = hide_attributes(instances, args.max_hidden)
 
     kf = cross_validation.KFold(len(hidden), n_folds=4)
+    totalAcc = []
+    totalWeightedAcc = []
     for trainidx, testidx in kf:
         train, test = hidden[trainidx], hidden[testidx]
         actual = instances[testidx]
@@ -256,4 +258,8 @@ if __name__=="__main__":
 
         total_accuracy /= predicted
         total_weighted_accuracy /= predicted
+        totalAcc.append(total_accuracy)
+        totalWeightedAcc.append(total_weighted_accuracy)
         print "Accuracy: {}, Weighted Accuracy: {}".format(total_accuracy, total_weighted_accuracy)
+
+    print "Aver Acc: {}, Weighted Aver Acc: {}".format(sum(totalAcc)/len(totalAcc), sum(totalWeightedAcc)/len(totalWeightedAcc))
