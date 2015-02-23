@@ -55,8 +55,8 @@ def correlation_check(instances, names):
     attributes = np.transpose(instances)
 
     N = len(attributes)
-    fig = tls.make_subplots(rows=N, cols=N, start_cell='top-left',
-          shared_xaxes=True, shared_yaxes=True, horizontal_spacing=0.5, vertical_spacing=0.5)
+    fig = tls.make_subplots(rows=N, cols=N, print_grid=False,
+                                  shared_xaxes=True, shared_yaxes=True)
 
     for i in xrange(N):
         # Scatter plot
@@ -66,13 +66,13 @@ def correlation_check(instances, names):
                 y=attributes[j],
                 mode='markers'
             )
-            fig['data'] += [scatt]
+            fig.append_trace(scatt, row=i+1, col=j+1)
 
         # Histogram for i
         hist = Histogram(
             x=attributes[i]
         )
-        fig['data'] += [hist]
+        fig.append_trace(hist, row=i+1, col=i+1)
 
         # Correlation graph
         for j in xrange(i + 1, N):
@@ -85,12 +85,9 @@ def correlation_check(instances, names):
                 text = [str(corr)],
                 textposition='top'
             )
-            fig['data'] += [trace]
+            fig.append_trace(trace, row=i+1, col=j+1)
 
-    layout = Layout(
-        showlegend=False
-    )
-    fig['layout'] = layout
+    fig['layout']['showlegend'] = False
     plot_url = py.plot(fig, filename='correlation-check')
 
 # Sampling
