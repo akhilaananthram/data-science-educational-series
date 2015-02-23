@@ -174,7 +174,8 @@ def predict(instance, train, distance, weight, k):
     for i, val in enumerate(instance):
         # Missing entry
         if val == 0:
-            p = 0
+            # Additional bucket for 0.  It will remain empty
+            votes = np.zeros(8)
             weights = []
             for j, n in enumerate(nearest):
                 # Entry is not missing
@@ -182,13 +183,13 @@ def predict(instance, train, distance, weight, k):
                     # Farther neighbors affect it less
                     w = weight(j)
                     weights.append(w)
-                    p += w * n[i]
+                    label = n[i]
+                    votes[label] += w
 
             # Neighbors may not have anything for this either
             if len(weights)!=0:
-                p /= sum(weights)
-
-            predictions.append((i,p))
+                p = np.argmax(votes)
+                predictions.append((i,p))
         
     return predictions
 
