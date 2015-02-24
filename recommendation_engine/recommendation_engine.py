@@ -4,10 +4,13 @@ import math
 
 import pandas as pd # C libraries for efficient tabular data
 import numpy as np
+from sklearn import cross_validation
+
+# Plotting tools
 import plotly.plotly as py
 import plotly.tools as tls
 from plotly.graph_objs import *
-from sklearn import cross_validation
+import matplotlib.pyplot as plt
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Recommendation Engine Example")
@@ -51,6 +54,36 @@ def read_data(filename):
     return instances, names
 
 def correlation_check(instances, names):
+    # Take transpose of instances
+    attributes = np.transpose(instances)
+
+    N = len(attributes)
+
+    plotNumber = 1
+    for i in xrange(N):
+        # Scatter plot
+        for j in xrange(i):
+            plt.subplot(N, N, plotNumber)
+            plt.plot(attributes[i], attributes[j], 'o')
+            plotNumber += 1
+
+        # Histogram for i
+        plt.subplot(N, N, plotNumber)
+        plt.hist(attributes[i], 7)
+        plotNumber += 1
+
+        # Correlation graph
+        for j in xrange(i + 1, N):
+            # corrcoef returns the normalized covariance matrix
+            corr = np.corrcoef(attributes[i], attributes[j])[0][1]
+            plt.subplot(N, N, plotNumber)
+            plt.scatter([0],[0])
+            plt.annotate(str(corr), xy=(0,0))
+            plotNumber += 1
+
+    plt.show()
+
+def correlation_check_plotly(instances, names):
     # Take transpose of instances
     attributes = np.transpose(instances)
 
