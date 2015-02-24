@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument("--k", dest="k", default=3,
         help="Number of neighbors to consider")
     parser.add_argument("--distance", dest="distance", default='cosine',
-        choices=['jaccard','euclidean', 'cosine'], help="Distance metric")
+        choices=['jaccard','euclidean', 'cosine','hamming','manhattan'], help="Distance metric")
     parser.add_argument("--weight", dest="weight", default='none',
         choices=['none', 'harmonic', 'exponential', 'gaussian'],
         help="Weight function for neighbors")
@@ -151,6 +151,28 @@ def cosine_similarity(A, B):
     # Subtracting from 1 so 0 = identical and 1 = opposite
     return 1 - (np.dot(A,B) / (np.linalg.norm(A) * np.linalg.norm(B)))
 
+def hamming(A, B):
+    distance = 0.0
+    for a, b in zip(A, B):
+        if a!=0 and b!=0:
+            if a != b:
+                distance+=1
+
+    # 0 = identical
+    return distance
+
+def manhattan(A, B):
+    distance = 0.0
+    for a, b in zip(A, B):
+        if a!=0 and b!=0:
+            distance += abs(a - b)
+
+    # 0 = identical
+    return distance
+
+def mahalanobis(A, B):
+    pass
+
 # Weight Functions
 def no_weight(i):
     return 1.0
@@ -212,6 +234,9 @@ def calculate_accuracy(predictions, actual):
     if total != 0:
         weighted_accuracy = (total - error) / total
         accuracy = exact / total
+    else:
+        weighted_accuracy = 0
+        accuracy = 0
 
     return accuracy, weighted_accuracy, total
 
@@ -224,6 +249,10 @@ if __name__=="__main__":
         distance = euclidean
     elif args.distance == "cosine":
         distance = cosine_similarity
+    elif args.distance == "hamming":
+        distance = hamming
+    elif args.distance == "manhattan":
+        distance = manhattan
 
     if args.weight == "none":
         weight = no_weight
