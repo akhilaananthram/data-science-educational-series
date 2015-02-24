@@ -132,7 +132,10 @@ def jaccard(A, B):
             denominator += max(a,b)
 
     # Subtracting from 1 so 0 = identical and 1 = opposite
-    return 1 - (numerator / denominator)
+    if denominator !=0:
+        return 1 - (numerator / denominator)
+    else:
+        return 1
 
 def euclidean(A, B):
     total = 0.0
@@ -206,8 +209,9 @@ def calculate_accuracy(predictions, actual):
             # if e == 6, exact opposite
             error += (1.0 / 6) * e
 
-    weighted_accuracy = (total - error) / total
-    accuracy = exact / total
+    if total != 0:
+        weighted_accuracy = (total - error) / total
+        accuracy = exact / total
 
     return accuracy, weighted_accuracy, total
 
