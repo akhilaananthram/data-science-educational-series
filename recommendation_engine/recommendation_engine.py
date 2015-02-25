@@ -1,6 +1,7 @@
 import random
 import argparse
 import math
+from functools import partial
 
 import pandas as pd # C libraries for efficient tabular data
 import numpy as np
@@ -18,10 +19,13 @@ def parse_args():
         help="Path to file. REQUIRED")
     parser.add_argument("--max-hidden", dest="max_hidden", required=True, type=int,
         help="Maximum number of attributes to hide. REQUIRED")
-    parser.add_argument("--k", dest="k", default=3,
-        help="Number of neighbors to consider")
+    parser.add_argument("--k", dest="k", default=3, type=int,
+        help="Number of neighbors to consider or dimension to reduce to.")
+    parser.add_argument("--classifier", dest="classifier", default='knn',
+        choices=['knn', 'pca'], help="Type of classifier to use")
     parser.add_argument("--distance", dest="distance", default='cosine',
-        choices=['jaccard','euclidean', 'cosine','hamming','manhattan'], help="Distance metric")
+        choices=['jaccard','euclidean', 'cosine','hamming','manhattan','mahalanobis'],
+        help="Distance metric")
     parser.add_argument("--weight", dest="weight", default='none',
         choices=['none', 'harmonic', 'exponential', 'gaussian'],
         help="Weight function for neighbors")
@@ -29,6 +33,10 @@ def parse_args():
         help="Show visualization")
     parser.add_argument('--normalize', action='store_true', dest="normalize",
         help="Normalize data to z-scores")
+    parser.add_argument('--mu' , dest='mu', default=0.0, type=float,
+        help="Mu argument for gaussian weights")
+    parser.add_argument('--sigma', dest='sig', default=3, type=float,
+        help="Sigma argument for gaussian weights")
 
     return parser.parse_args()
 
@@ -241,8 +249,12 @@ def manhattan(A, B):
     # 0 = identical
     return distance
 
-def mahalanobis(A, B):
-    pass
+def mahalanobis(A, B, covInv=None):
+    m = [1 if np.isnan(A[i]) or np.isnan(B[i]) else 0 for i in xrange(len(A))]
+    diff = np.ma.array(A - B, mask= m)
+    diff_trans = np.transpose(diff)
+
+    return math.sqrt(diff_trans.dot(covInv.dot(diff)))
 
 # Weight Functions
 def no_weight(i):
@@ -258,6 +270,40 @@ def gaussian(i, mu = 0.0, sig=3):
     return math.exp(-((i - mu) ** 2) / (2 * (sig ** 2)))
 
 # Classifier
+def dimensionality_reduction(instances, d, maxIterations=5):
+    num_instances, num_attributes = instances.shape
+
+    # Take transpose of instances
+    attributes = np.transpose(instances)
+
+    # Replace missing values with an average for that attribute
+
+    # Iteratively determine U and V until they converge
+    # Goal: minimize squared error between true instances and 
+    # prediction by u * v
+
+    # Start with a random V
+    V = np.random.randn(num_attributes, d)
+    U = np.zeros((num_instances, d))
+    for iterations in xrange(maxIterations):
+        # Optimize U with V fixed
+        for i in xrange(num_instances):
+            mask = ~np.ma.masked_invalid(instances[i]).mask
+            V_star = V[mask]
+            V_star_trans = np.transpose(V_star)
+            inv = np.linalg.inv(V_star_trans.dot(V_star))
+            U[i] = inv.dot(V_star_trans.dot(instances[i][mask]))
+
+        # Optimize V with U fixed
+        for i in xrange(num_attributes):
+            mask = ~np.ma.masked_invalid(attributes[i]).mask
+            U_star = U[mask]
+            U_star_trans = np.transpose(U_star)
+            inv = np.linalg.inv(U_star_trans.dot(U_star))
+            V[i] = inv.dot(U_star_trans.dot(attributes[i][mask]))
+    
+    return U, V
+
 def predict(instance, train, distance, weight, k):
     # Sort the training instances
     neighbors = sorted(train, key= lambda x:distance(instance,x))
@@ -314,26 +360,6 @@ def calculate_accuracy(predictions, actual):
 if __name__=="__main__":
     args = parse_args()
 
-    if args.distance == "jaccard":
-        distance = jaccard
-    elif args.distance == "euclidean":
-        distance = euclidean
-    elif args.distance == "cosine":
-        distance = cosine_similarity
-    elif args.distance == "hamming":
-        distance = hamming
-    elif args.distance == "manhattan":
-        distance = manhattan
-
-    if args.weight == "none":
-        weight = no_weight
-    elif args.weight == "harmonic":
-        weight = harmonic
-    elif args.weight == "exponential":
-        weight = exponential_decay
-    elif args.weight == "gaussian":
-        weight = gaussian
-
     # Read data and create features
     instances, names = read_data(args.path)
 
@@ -344,27 +370,74 @@ if __name__=="__main__":
         correlation_check(instances, names)
 
     hidden = hide_attributes(instances, args.max_hidden)
+    num_instances, num_attributes = hidden.shape
 
-    kf = cross_validation.KFold(len(hidden), n_folds=4)
-    totalAcc = []
-    totalWeightedAcc = []
-    for trainidx, testidx in kf:
-        train, test = hidden[trainidx], hidden[testidx]
-        actual = instances[testidx]
+    if args.distance == "jaccard":
+        distance = jaccard
+    elif args.distance == "euclidean":
+        distance = euclidean
+    elif args.distance == "cosine":
+        distance = cosine_similarity
+    elif args.distance == "hamming":
+        distance = hamming
+    elif args.distance == "manhattan":
+        distance = manhattan
+    elif args.distance == "mahalanobis":
+        inverseCovariance = np.linalg.inv(np.ma.cov(hidden))
+        distance = partial(mahalanobis, covInv = inverseCovariance)
+
+    if args.weight == "none":
+        weight = no_weight
+    elif args.weight == "harmonic":
+        weight = harmonic
+    elif args.weight == "exponential":
+        weight = exponential_decay
+    elif args.weight == "gaussian":
+        weight = partial(gaussian, mu = args.mu, sig= args.sig)
+
+    if args.classifier == 'pca':
+        print "Calculating U and V..."
+        U, V = dimensionality_reduction(hidden, args.k, maxIterations=5)
         predicted = 0.0
         total_accuracy = 0.0
         total_weighted_accuracy = 0.0
-        for t, a in zip(test, actual):
-            predictions = predict(t, train, distance, weight, args.k)
-            accuracy, weighted_accuracy, total = calculate_accuracy(predictions, a)
+
+        # Predict
+        for i in xrange(num_instances):
+            predictions = []
+            for j in xrange(num_attributes):
+                if np.isnan(hidden[i][j]):
+                    # prediction = u_i * v_j
+                    predictions.append((j, U[i].dot(V[j])))
+
+            accuracy, weighted_accuracy, total = calculate_accuracy(predictions, instances[i])
             predicted += total
             total_accuracy += accuracy * total
             total_weighted_accuracy += weighted_accuracy * total
-
         total_accuracy /= predicted
         total_weighted_accuracy /= predicted
-        totalAcc.append(total_accuracy)
-        totalWeightedAcc.append(total_weighted_accuracy)
         print "Accuracy: {}, Weighted Accuracy: {}".format(total_accuracy, total_weighted_accuracy)
+    elif args.classifier == 'knn':
+        kf = cross_validation.KFold(len(hidden), n_folds=4)
+        totalAcc = []
+        totalWeightedAcc = []
+        for trainidx, testidx in kf:
+            train, test = hidden[trainidx], hidden[testidx]
+            actual = instances[testidx]
+            predicted = 0.0
+            total_accuracy = 0.0
+            total_weighted_accuracy = 0.0
+            for t, a in zip(test, actual):
+                predictions = predict(t, train, distance, weight, args.k)
+                accuracy, weighted_accuracy, total = calculate_accuracy(predictions, a)
+                predicted += total
+                total_accuracy += accuracy * total
+                total_weighted_accuracy += weighted_accuracy * total
 
-    print "Aver Acc: {}, Weighted Aver Acc: {}".format(sum(totalAcc)/len(totalAcc), sum(totalWeightedAcc)/len(totalWeightedAcc))
+            total_accuracy /= predicted
+            total_weighted_accuracy /= predicted
+            totalAcc.append(total_accuracy)
+            totalWeightedAcc.append(total_weighted_accuracy)
+            print "Accuracy: {}, Weighted Accuracy: {}".format(total_accuracy, total_weighted_accuracy)
+
+        print "Aver Acc: {}, Weighted Aver Acc: {}".format(sum(totalAcc)/len(totalAcc), sum(totalWeightedAcc)/len(totalWeightedAcc))
