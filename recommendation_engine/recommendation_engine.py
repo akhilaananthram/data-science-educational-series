@@ -27,6 +27,8 @@ def parse_args():
         help="Weight function for neighbors")
     parser.add_argument('--visualize', action='store_true', dest="visualize",
         help="Show visualization")
+    parser.add_argument('--normalize', action='store_true', dest="normalize",
+        help="Normalize data to z-scores")
 
     return parser.parse_args()
 
@@ -123,6 +125,30 @@ def correlation_check_plotly(instances, names):
     fig['layout']['showlegend'] = False
     plot_url = py.plot(fig, filename='correlation-check')
 
+def normalize(instances):
+    # Take transpose of instances
+    attributes = np.transpose(instances)
+
+    means = []
+    stds = []
+    for i in xrange(len(attributes)):
+        a = attributes[i]
+
+        # Using mask to ignore NaNs
+        # Calcuate mean
+        m = np.ma.masked_invalid(a).mean()
+        means.append(m)
+
+        # Calculate standard deviation
+        s = np.ma.masked_invalid(a).std()
+        stds.append(s)
+
+    # Normalize to z-scores
+    for i in xrange(len(instances)):
+        for j in xrange(len(means)):
+            if not np.isnan(instances[i][j]):
+                instances[i][j] = (instances[i][j] - means[j]) / stds[j]
+
 # Sampling
 def reservoir_sampling(instance, n):
     size = min(len(instance), n)
@@ -138,8 +164,9 @@ def reservoir_sampling(instance, n):
         if j < n:
             indices[j] = i
 
-    # Set all other positions to 0
+    # Set all other positions to NaN
     hidden = np.zeros(len(instance))
+    hidden[:] = np.nan
     for i in indices:
         hidden[i] = instance[i]
 
@@ -147,9 +174,10 @@ def reservoir_sampling(instance, n):
 
 def hide_attributes(instances, max_hidden):
     new_instances = []
+    min_hidden = max(max_hidden - 5, 1)
 
     for inst in instances:
-        n = random.randrange(1, max_hidden)
+        n = random.randrange(min_hidden, max_hidden)
         new_instances.append(reservoir_sampling(inst, n))
 
     return np.array(new_instances)
@@ -159,13 +187,13 @@ def jaccard(A, B):
     numerator = 0.0
     denominator = 0.0
     for a, b in zip(A, B):
-        # 0 stands for missing data
-        if a!=0 and b!=0:
+        # NaN stands for missing data
+        if not np.isnan(a) and not np.isnan(b):
             numerator += min(a,b)
             denominator += max(a,b)
 
     # Subtracting from 1 so 0 = identical and 1 = opposite
-    if denominator !=0:
+    if denominator != 0:
         return 1 - (numerator / denominator)
     else:
         return 1
@@ -173,21 +201,30 @@ def jaccard(A, B):
 def euclidean(A, B):
     total = 0.0
     for a, b in zip(A, B):
-        # 0 stands for missing data
-        if a!=0 and b!=0:
+        # NaN stands for missing data
+        if not np.isnan(a) and not np.isnan(b):
             total += (a - b) ** 2
 
     # 0 = identical
     return math.sqrt(total)
 
 def cosine_similarity(A, B):
+    A_prime = np.array(A)
+    B_prime = np.array(B)
+    for i in xrange(len(A)):
+        if np.isnan(A_prime[i]):
+            A_prime[i] = 0.0
+        if np.isnan(B_prime[i]):
+            B_prime[i] = 0.0
+
     # Subtracting from 1 so 0 = identical and 1 = opposite
-    return 1 - (np.dot(A,B) / (np.linalg.norm(A) * np.linalg.norm(B)))
+    return 1 - (np.dot(A_prime,B_prime) / (np.linalg.norm(A_prime) * np.linalg.norm(B_prime)))
 
 def hamming(A, B):
     distance = 0.0
     for a, b in zip(A, B):
-        if a!=0 and b!=0:
+        # NaN stands for missing data
+        if not np.isnan(a) and not np.isnan(b):
             if a != b:
                 distance+=1
 
@@ -197,7 +234,8 @@ def hamming(A, B):
 def manhattan(A, B):
     distance = 0.0
     for a, b in zip(A, B):
-        if a!=0 and b!=0:
+        # NaN stands for missing data
+        if not np.isnan(a) and not np.isnan(b):
             distance += abs(a - b)
 
     # 0 = identical
@@ -228,13 +266,13 @@ def predict(instance, train, distance, weight, k):
     predictions = []
     for i, val in enumerate(instance):
         # Missing entry
-        if val == 0:
+        if np.isnan(val):
             # Additional bucket for 0.  It will remain empty
             votes = np.zeros(8)
             weights = []
             for j, n in enumerate(nearest):
                 # Entry is not missing
-                if n[i] != 0:
+                if not np.isnan(n[i]):
                     # Farther neighbors affect it less
                     w = weight(j)
                     weights.append(w)
@@ -298,6 +336,9 @@ if __name__=="__main__":
 
     # Read data and create features
     instances, names = read_data(args.path)
+
+    if args.normalize:
+        normalize(instances)
 
     if args.visualize:
         correlation_check(instances, names)
