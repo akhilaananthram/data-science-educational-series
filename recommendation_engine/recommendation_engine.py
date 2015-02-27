@@ -59,7 +59,7 @@ def read_data(filename):
     for i, k in enumerate(names):
         attribute = dataTable[k]
         for j, val in enumerate(attribute):
-            instances[j][i] = val
+            instances[j,i] = val
 
     return instances, names
 
@@ -85,7 +85,7 @@ def correlation_check(instances, names):
         # Correlation graph
         for j in xrange(i + 1, N):
             # corrcoef returns the normalized covariance matrix
-            corr = np.corrcoef(attributes[i], attributes[j])[0][1]
+            corr = np.corrcoef(attributes[i], attributes[j])[0,1]
             plt.subplot(N, N, plotNumber)
             plt.scatter([0],[0])
             plt.annotate(str(corr), xy=(0,0))
@@ -120,7 +120,7 @@ def correlation_check_plotly(instances, names):
         # Correlation graph
         for j in xrange(i + 1, N):
             # corrcoef returns the normalized covariance matrix
-            corr = np.corrcoef(attributes[i], attributes[j])[0][1]
+            corr = np.corrcoef(attributes[i], attributes[j])[0,1]
             trace = Scatter(
                 x = [0],
                 y = [0],
@@ -154,8 +154,8 @@ def normalize(instances):
     # Normalize to z-scores
     for i in xrange(len(instances)):
         for j in xrange(len(means)):
-            if not np.isnan(instances[i][j]):
-                instances[i][j] = (instances[i][j] - means[j]) / stds[j]
+            if not np.isnan(instances[i,j]):
+                instances[i,j] = (instances[i,j] - means[j]) / stds[j]
 
 # Sampling
 def reservoir_sampling(instance, n):
@@ -293,7 +293,7 @@ def dimensionality_reduction(instances, d, maxIterations=5):
             V_star = V[mask]
             V_star_trans = V_star.T
             inv = np.linalg.inv(V_star_trans.dot(V_star))
-            U[i] = inv.dot(V_star_trans.dot(instances[i][mask]))
+            U[i] = inv.dot(V_star_trans.dot(instances[i,mask]))
 
         # Optimize V with U fixed
         for i in xrange(num_attributes):
@@ -301,7 +301,7 @@ def dimensionality_reduction(instances, d, maxIterations=5):
             U_star = U[mask]
             U_star_trans = U_star.T
             inv = np.linalg.inv(U_star_trans.dot(U_star))
-            V[i] = inv.dot(U_star_trans.dot(attributes[i][mask]))
+            V[i] = inv.dot(U_star_trans.dot(attributes[i,mask]))
     
     return U, V
 
@@ -407,7 +407,7 @@ if __name__=="__main__":
         for i in xrange(num_instances):
             predictions = []
             for j in xrange(num_attributes):
-                if np.isnan(hidden[i][j]):
+                if np.isnan(hidden[i,j]):
                     # prediction = u_i * v_j
                     predictions.append((j, U[i].dot(V[j])))
 
