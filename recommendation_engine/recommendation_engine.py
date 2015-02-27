@@ -65,7 +65,7 @@ def read_data(filename):
 
 def correlation_check(instances, names):
     # Take transpose of instances
-    attributes = np.transpose(instances)
+    attributes = instances.T
 
     N = len(attributes)
 
@@ -95,7 +95,7 @@ def correlation_check(instances, names):
 
 def correlation_check_plotly(instances, names):
     # Take transpose of instances
-    attributes = np.transpose(instances)
+    attributes = instances.T
 
     N = len(attributes)
     fig = tls.make_subplots(rows=N, cols=N, print_grid=False,
@@ -135,7 +135,7 @@ def correlation_check_plotly(instances, names):
 
 def normalize(instances):
     # Take transpose of instances
-    attributes = np.transpose(instances)
+    attributes = instances.T
 
     means = []
     stds = []
@@ -249,11 +249,12 @@ def manhattan(A, B):
     # 0 = identical
     return distance
 
-def mahalanobis(A, B, covInv=None):
+def mahalanobis(A, B, covInv):
     m = [1 if np.isnan(A[i]) or np.isnan(B[i]) else 0 for i in xrange(len(A))]
     diff = np.ma.array(A - B, mask= m)
-    diff_trans = np.transpose(diff)
+    diff_trans = diff.T
 
+    # 0 = identical
     return math.sqrt(diff_trans.dot(covInv.dot(diff)))
 
 # Weight Functions
@@ -266,7 +267,7 @@ def harmonic(i):
 def exponential_decay(i):
     return math.exp(-i)
 
-def gaussian(i, mu = 0.0, sig=3):
+def gaussian(i, mu, sig):
     return math.exp(-((i - mu) ** 2) / (2 * (sig ** 2)))
 
 # Classifier
@@ -274,7 +275,7 @@ def dimensionality_reduction(instances, d, maxIterations=5):
     num_instances, num_attributes = instances.shape
 
     # Take transpose of instances
-    attributes = np.transpose(instances)
+    attributes = instances.T
 
     # Replace missing values with an average for that attribute
 
@@ -290,7 +291,7 @@ def dimensionality_reduction(instances, d, maxIterations=5):
         for i in xrange(num_instances):
             mask = ~np.ma.masked_invalid(instances[i]).mask
             V_star = V[mask]
-            V_star_trans = np.transpose(V_star)
+            V_star_trans = V_star.T
             inv = np.linalg.inv(V_star_trans.dot(V_star))
             U[i] = inv.dot(V_star_trans.dot(instances[i][mask]))
 
@@ -298,7 +299,7 @@ def dimensionality_reduction(instances, d, maxIterations=5):
         for i in xrange(num_attributes):
             mask = ~np.ma.masked_invalid(attributes[i]).mask
             U_star = U[mask]
-            U_star_trans = np.transpose(U_star)
+            U_star_trans = U_star.T
             inv = np.linalg.inv(U_star_trans.dot(U_star))
             V[i] = inv.dot(U_star_trans.dot(attributes[i][mask]))
     
