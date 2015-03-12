@@ -40,6 +40,7 @@ if __name__=="__main__":
     instances, tags = read_data(args.path)
     tokens = tokenize(instances, args.lower)
     frequencies = np.array([FreqDist(t) for t in tokens])
+    print frequencies
 
     overall_accuracy = 0.0
     total = 0.0
