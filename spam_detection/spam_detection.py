@@ -6,6 +6,8 @@ import nltk
 from nltk.probability import FreqDist
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.naive_bayes import BernoulliNB
+from sklearn.naive_bayes import GaussianNB
 from sklearn.cross_validation import KFold
 
 def parse_args():
@@ -14,6 +16,9 @@ def parse_args():
         help="Path to file. REQUIRED")
     parser.add_argument("--lowercase", dest="lower", action="store_true",
         help="Toggle use of lowercase")
+    parser.add_argument("--classifier", dest="classifier", default="multinomial",
+        choices=["multinomial", "bernoulli", "gaussian"],
+        help="Type of classifier to use")
 
     return parser.parse_args()
 
@@ -40,11 +45,10 @@ if __name__=="__main__":
     instances, tags = read_data(args.path)
     tokens = tokenize(instances, args.lower)
     frequencies = np.array([FreqDist(t) for t in tokens])
-    print frequencies
 
     overall_accuracy = 0.0
     total = 0.0
-    kf = KFold(4, n_folds=4)
+    kf = KFold(len(frequencies), n_folds=4)
     for train, test in kf:
         train_x = frequencies[train]
         train_y = tags[train]
@@ -60,7 +64,7 @@ if __name__=="__main__":
         vocab = list(vocab)
         vocab_to_index = {w:i for i,w in enumerate(vocab)}
 
-        print "Generating count matrix..."
+        print "Generating Count Matrix..."
         train_vector = np.zeros((len(train_x), len(vocab)))
         for i in xrange(len(train_x)):
             f = train_x[i]
@@ -83,13 +87,19 @@ if __name__=="__main__":
         test_tfidf = tfidf.transform(test_vector)
 
         print "Training Classifier..."
-        classifier = MultinomialNB()
-        classifier.fit(train_tfidf, train_y)
+        if args.classifier=="multinomial":
+            classifier = MultinomialNB()
+        elif args.classifier=="bernoulli":
+            classifier = BernoulliNB()
+        elif args.classifier=="gaussian":
+            classifier = GaussianNB()
+
+        classifier.fit(train_tfidf.toarray(), train_y)
 
         print "Test Classifier..."
-        accuracy = classifier.score(test_tfidf, test_y)
+        accuracy = classifier.score(test_tfidf.toarray(), test_y)
         print accuracy
-        overall_accuracy += accuracy
+        overall_accuracy += accuracy * len(test_y)
         total += len(test_y)
 
-    print overall_accuracy / total
+    print "Average Accuracy: {}".format(overall_accuracy / total)
