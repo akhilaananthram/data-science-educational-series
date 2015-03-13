@@ -8,6 +8,8 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.naive_bayes import BernoulliNB
 from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
 from sklearn.cross_validation import KFold
 
 def parse_args():
@@ -17,7 +19,7 @@ def parse_args():
     parser.add_argument("--lowercase", dest="lower", action="store_true",
         help="Toggle use of lowercase")
     parser.add_argument("--classifier", dest="classifier", default="multinomial",
-        choices=["multinomial", "bernoulli", "gaussian"],
+        choices=["multinomial", "bernoulli", "gaussian", "svm", "logistic"],
         help="Type of classifier to use")
 
     return parser.parse_args()
@@ -93,6 +95,10 @@ if __name__=="__main__":
             classifier = BernoulliNB()
         elif args.classifier=="gaussian":
             classifier = GaussianNB()
+        elif args.classifier=="svm":
+            classifier = SVC()
+        elif args.classifier=="logistic":
+            classifier = LogisticRegression()
 
         classifier.fit(train_tfidf.toarray(), train_y)
 
