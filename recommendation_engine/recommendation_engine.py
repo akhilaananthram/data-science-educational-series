@@ -3,7 +3,7 @@ import argparse
 import math
 from functools import partial
 
-import pandas as pd # C libraries for efficient tabular data
+import pandas as pd  # C libraries for efficient tabular data
 import numpy as np
 from sklearn import cross_validation
 
@@ -13,19 +13,20 @@ import plotly.tools as tls
 from plotly.graph_objs import *
 import matplotlib.pyplot as plt
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Recommendation Engine Example")
+    parser = argparse.ArgumentParser(description="Recommendation Engine")
     parser.add_argument("--path", dest="path", required=True, type=str,
         help="Path to file. REQUIRED")
-    parser.add_argument("--max-hidden", dest="max_hidden", required=True, type=int,
-        help="Maximum number of attributes to hide. REQUIRED")
+    parser.add_argument("--max-hidden", dest="max_hidden", required=True,
+        type=int, help="Maximum number of attributes to hide. REQUIRED")
     parser.add_argument("--k", dest="k", default=3, type=int,
         help="Number of neighbors to consider or dimension to reduce to.")
     parser.add_argument("--classifier", dest="classifier", default='knn',
         choices=['knn', 'pca'], help="Type of classifier to use")
     parser.add_argument("--distance", dest="distance", default='cosine',
-        choices=['jaccard','euclidean', 'cosine','hamming','manhattan','mahalanobis'],
-        help="Distance metric")
+        choices=['jaccard', 'euclidean', 'cosine', 'hamming', 'manhattan',
+        'mahalanobis'], help="Distance metric")
     parser.add_argument("--weight", dest="weight", default='none',
         choices=['none', 'harmonic', 'exponential', 'gaussian'],
         help="Weight function for neighbors")
@@ -33,16 +34,17 @@ def parse_args():
         help="Show visualization")
     parser.add_argument('--normalize', action='store_true', dest="normalize",
         help="Normalize data to z-scores")
-    parser.add_argument('--mu' , dest='mu', default=0.0, type=float,
+    parser.add_argument('--mu', dest='mu', default=0.0, type=float,
         help="Mu argument for gaussian weights")
     parser.add_argument('--sigma', dest='sig', default=3, type=float,
         help="Sigma argument for gaussian weights")
 
     return parser.parse_args()
 
+
 def read_data(filename):
     print "Reading in {} ...".format(filename)
-    
+
     # dataTable is a pandas data frame containing our data
     dataTable = pd.read_csv(filename)
 
@@ -59,9 +61,10 @@ def read_data(filename):
     for i, k in enumerate(names):
         attribute = dataTable[k]
         for j, val in enumerate(attribute):
-            instances[j,i] = val
+            instances[j, i] = val
 
     return instances, names
+
 
 def correlation_check(instances, names):
     # Take transpose of instances
@@ -85,13 +88,14 @@ def correlation_check(instances, names):
         # Correlation graph
         for j in xrange(i + 1, N):
             # corrcoef returns the normalized covariance matrix
-            corr = np.corrcoef(attributes[i], attributes[j])[0,1]
+            corr = np.corrcoef(attributes[i], attributes[j])[0, 1]
             plt.subplot(N, N, plotNumber)
-            plt.scatter([0],[0])
-            plt.annotate(str(corr), xy=(0,0))
+            plt.scatter([0], [0])
+            plt.annotate(str(corr), xy=(0, 0))
             plotNumber += 1
 
     plt.show()
+
 
 def correlation_check_plotly(instances, names):
     # Take transpose of instances
@@ -99,7 +103,7 @@ def correlation_check_plotly(instances, names):
 
     N = len(attributes)
     fig = tls.make_subplots(rows=N, cols=N, print_grid=False,
-                                  shared_xaxes=True, shared_yaxes=True)
+        shared_xaxes=True, shared_yaxes=True)
 
     for i in xrange(N):
         # Scatter plot
@@ -120,18 +124,19 @@ def correlation_check_plotly(instances, names):
         # Correlation graph
         for j in xrange(i + 1, N):
             # corrcoef returns the normalized covariance matrix
-            corr = np.corrcoef(attributes[i], attributes[j])[0,1]
+            corr = np.corrcoef(attributes[i], attributes[j])[0, 1]
             trace = Scatter(
-                x = [0],
-                y = [0],
+                x=[0],
+                y=[0],
                 mode='text',
-                text = [str(corr)],
+                text=[str(corr)],
                 textposition='top'
             )
             fig.append_trace(trace, row=i+1, col=j+1)
 
     fig['layout']['showlegend'] = False
     plot_url = py.plot(fig, filename='correlation-check')
+
 
 def normalize(instances):
     # Take transpose of instances
@@ -154,8 +159,9 @@ def normalize(instances):
     # Normalize to z-scores
     for i in xrange(len(instances)):
         for j in xrange(len(means)):
-            if not np.isnan(instances[i,j]):
-                instances[i,j] = (instances[i,j] - means[j]) / stds[j]
+            if not np.isnan(instances[i, j]):
+                instances[i, j] = (instances[i, j] - means[j]) / stds[j]
+
 
 # Sampling
 def reservoir_sampling(instance, n):
@@ -180,6 +186,7 @@ def reservoir_sampling(instance, n):
 
     return hidden
 
+
 def hide_attributes(instances, max_hidden):
     new_instances = []
     min_hidden = max(max_hidden - 5, 1)
@@ -190,6 +197,7 @@ def hide_attributes(instances, max_hidden):
 
     return np.array(new_instances)
 
+
 # Distance Functions
 def jaccard(A, B):
     numerator = 0.0
@@ -197,14 +205,15 @@ def jaccard(A, B):
     for a, b in zip(A, B):
         # NaN stands for missing data
         if not np.isnan(a) and not np.isnan(b):
-            numerator += min(a,b)
-            denominator += max(a,b)
+            numerator += min(a, b)
+            denominator += max(a, b)
 
     # Subtracting from 1 so 0 = identical and 1 = opposite
     if denominator != 0:
         return 1 - (numerator / denominator)
     else:
         return 1
+
 
 def euclidean(A, B):
     total = 0.0
@@ -216,6 +225,7 @@ def euclidean(A, B):
     # 0 = identical
     return math.sqrt(total)
 
+
 def cosine_similarity(A, B):
     A_prime = np.array(A)
     B_prime = np.array(B)
@@ -226,7 +236,9 @@ def cosine_similarity(A, B):
             B_prime[i] = 0.0
 
     # Subtracting from 1 so 0 = identical and 1 = opposite
-    return 1 - (np.dot(A_prime,B_prime) / (np.linalg.norm(A_prime) * np.linalg.norm(B_prime)))
+    return 1 - (np.dot(A_prime, B_prime) /
+        (np.linalg.norm(A_prime) * np.linalg.norm(B_prime)))
+
 
 def hamming(A, B):
     distance = 0.0
@@ -234,10 +246,11 @@ def hamming(A, B):
         # NaN stands for missing data
         if not np.isnan(a) and not np.isnan(b):
             if a != b:
-                distance+=1
+                distance += 1
 
     # 0 = identical
     return distance
+
 
 def manhattan(A, B):
     distance = 0.0
@@ -249,26 +262,32 @@ def manhattan(A, B):
     # 0 = identical
     return distance
 
+
 def mahalanobis(A, B, covInv):
     m = [1 if np.isnan(A[i]) or np.isnan(B[i]) else 0 for i in xrange(len(A))]
-    diff = np.ma.array(A - B, mask= m)
+    diff = np.ma.array(A - B, mask=m)
     diff_trans = diff.T
 
     # 0 = identical
     return math.sqrt(diff_trans.dot(covInv.dot(diff)))
 
+
 # Weight Functions
 def no_weight(i):
     return 1.0
 
+
 def harmonic(i):
     return 1.0 / (i + 1)
+
 
 def exponential_decay(i):
     return math.exp(-i)
 
+
 def gaussian(i, mu, sig):
     return math.exp(-((i - mu) ** 2) / (2 * (sig ** 2)))
+
 
 # Classifier
 def dimensionality_reduction(instances, d, maxIterations=5):
@@ -280,7 +299,7 @@ def dimensionality_reduction(instances, d, maxIterations=5):
     # Replace missing values with an average for that attribute
 
     # Iteratively determine U and V until they converge
-    # Goal: minimize squared error between true instances and 
+    # Goal: minimize squared error between true instances and
     # prediction by u * v
 
     # Start with a random V
@@ -293,7 +312,7 @@ def dimensionality_reduction(instances, d, maxIterations=5):
             V_star = V[mask]
             V_star_trans = V_star.T
             inv = np.linalg.inv(V_star_trans.dot(V_star))
-            U[i] = inv.dot(V_star_trans.dot(instances[i,mask]))
+            U[i] = inv.dot(V_star_trans.dot(instances[i, mask]))
 
         # Optimize V with U fixed
         for i in xrange(num_attributes):
@@ -301,13 +320,14 @@ def dimensionality_reduction(instances, d, maxIterations=5):
             U_star = U[mask]
             U_star_trans = U_star.T
             inv = np.linalg.inv(U_star_trans.dot(U_star))
-            V[i] = inv.dot(U_star_trans.dot(attributes[i,mask]))
-    
+            V[i] = inv.dot(U_star_trans.dot(attributes[i, mask]))
+
     return U, V
+
 
 def predict(instance, train, distance, weight, k):
     # Sort the training instances
-    neighbors = sorted(train, key= lambda x:distance(instance,x))
+    neighbors = sorted(train, key=lambda x: distance(instance, x))
     nearest = neighbors[:k]
 
     predictions = []
@@ -327,11 +347,12 @@ def predict(instance, train, distance, weight, k):
                     votes[label] += w
 
             # Neighbors may not have anything for this either
-            if len(weights)!=0:
+            if len(weights) != 0:
                 p = np.argmax(votes)
-                predictions.append((i,p))
-        
+                predictions.append((i, p))
+
     return predictions
+
 
 # Evaluation
 def calculate_accuracy(predictions, actual):
@@ -339,7 +360,7 @@ def calculate_accuracy(predictions, actual):
     error = 0.0
     total = 0.0
     for i, p in predictions:
-        if p!=0:
+        if p != 0:
             total += 1
             e = abs(p - actual[i])
             # exact match
@@ -358,7 +379,8 @@ def calculate_accuracy(predictions, actual):
 
     return accuracy, weighted_accuracy, total
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     args = parse_args()
 
     # Read data and create features
@@ -385,7 +407,7 @@ if __name__=="__main__":
         distance = manhattan
     elif args.distance == "mahalanobis":
         inverseCovariance = np.linalg.inv(np.ma.cov(hidden))
-        distance = partial(mahalanobis, covInv = inverseCovariance)
+        distance = partial(mahalanobis, covInv=inverseCovariance)
 
     if args.weight == "none":
         weight = no_weight
@@ -394,7 +416,7 @@ if __name__=="__main__":
     elif args.weight == "exponential":
         weight = exponential_decay
     elif args.weight == "gaussian":
-        weight = partial(gaussian, mu = args.mu, sig= args.sig)
+        weight = partial(gaussian, mu=args.mu, sig=args.sig)
 
     if args.classifier == 'pca':
         print "Calculating U and V..."
@@ -407,17 +429,19 @@ if __name__=="__main__":
         for i in xrange(num_instances):
             predictions = []
             for j in xrange(num_attributes):
-                if np.isnan(hidden[i,j]):
+                if np.isnan(hidden[i, j]):
                     # prediction = u_i * v_j
                     predictions.append((j, U[i].dot(V[j])))
 
-            accuracy, weighted_accuracy, total = calculate_accuracy(predictions, instances[i])
+            accuracy, weighted_accuracy, total = \
+                calculate_accuracy(predictions, instances[i])
             predicted += total
             total_accuracy += accuracy * total
             total_weighted_accuracy += weighted_accuracy * total
         total_accuracy /= predicted
         total_weighted_accuracy /= predicted
-        print "Accuracy: {}, Weighted Accuracy: {}".format(total_accuracy, total_weighted_accuracy)
+        print "Accuracy: {}, Weighted Accuracy: {}".format(total_accuracy,
+            total_weighted_accuracy)
     elif args.classifier == 'knn':
         kf = cross_validation.KFold(len(hidden), n_folds=4)
         totalAcc = []
@@ -430,7 +454,8 @@ if __name__=="__main__":
             total_weighted_accuracy = 0.0
             for t, a in zip(test, actual):
                 predictions = predict(t, train, distance, weight, args.k)
-                accuracy, weighted_accuracy, total = calculate_accuracy(predictions, a)
+                accuracy, weighted_accuracy, total = \
+                    calculate_accuracy(predictions, a)
                 predicted += total
                 total_accuracy += accuracy * total
                 total_weighted_accuracy += weighted_accuracy * total
@@ -439,6 +464,8 @@ if __name__=="__main__":
             total_weighted_accuracy /= predicted
             totalAcc.append(total_accuracy)
             totalWeightedAcc.append(total_weighted_accuracy)
-            print "Accuracy: {}, Weighted Accuracy: {}".format(total_accuracy, total_weighted_accuracy)
+            print "Accuracy: {}, Weighted Accuracy: {}".format(total_accuracy,
+                total_weighted_accuracy)
 
-        print "Aver Acc: {}, Weighted Aver Acc: {}".format(sum(totalAcc)/len(totalAcc), sum(totalWeightedAcc)/len(totalWeightedAcc))
+        print "Aver Acc: {}, Weighted Aver Acc: {}".format(sum(totalAcc) /
+            len(totalAcc), sum(totalWeightedAcc) / len(totalWeightedAcc))
